@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'thekellerkinderakkorde-9280b15fca5f';
+const CACHE_VERSION = 'thekellerkinderakkorde-49244d483231';
 const FILES = [
   "./",
   "ansicht.js",

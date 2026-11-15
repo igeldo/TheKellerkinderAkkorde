@@ -13,7 +13,7 @@
   const T = window.KKTheorie;
   const A = window.KKAnsicht;
   const BASE = window.KK_BASE || '/static/';
-  const VERSION = 'v1.4';
+  const VERSION = 'v1.6';
   const $ = (id) => document.getElementById(id);
   const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
     || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -94,7 +94,7 @@
     document.querySelector('.q-skala').hidden = akkord;
     $('sec-voicings').hidden = !akkord;
     $('sec-scale').hidden = akkord;
-    $('btn-play2').hidden = !akkord;
+    $('btn-play').parentElement.hidden = akkord;   // Akkord: Griff antippen statt Knopf
     $('chk-loop').parentElement.hidden = akkord;
     $('tempo').parentElement.hidden = akkord;
     if (akkord) renderChord(tun); else renderScale(tun);
@@ -135,8 +135,6 @@
       : '<p class="muted">In diesem Bereich gibt es keinen gut greifbaren Griff. Andere Lage wählen.</p>';
     renderNeckChord(tun);
     $('sec-degrees').hidden = true;
-    $('btn-play').disabled = !playerReady || !voicings.length;
-    $('btn-play2').disabled = !playerReady || !voicings.length;
   }
 
   const lageText = (v) => (v.position === 0 ? 'offen' : `${v.position}. Bund`);
@@ -296,12 +294,7 @@
 
   // Akkord: "Anhören" spielt alle angezeigten Griffe nacheinander (angeschlagen), "Arpeggio" ebenso als Arpeggio.
   // Skala: auf- und abwärts. Ein zweiter Klick hält an.
-  $('btn-play').addEventListener('click', () => {
-    if (state.mode === 'akkord') { if (seqKind === 'strum') stopAll(); else playVoicings(0); }
-    else if (seqKind === 'scale') stopAll();
-    else playScale();
-  });
-  $('btn-play2').addEventListener('click', () => { if (seqKind === 'arp') stopAll(); else playVoicings(1); });
+  $('btn-play').addEventListener('click', () => { if (seqKind === 'scale') stopAll(); else playScale(); });
   $('chk-loop').addEventListener('change', () => { api.isLooping = $('chk-loop').checked; });
 
   // ---------------------------------------------------------------- alphaTab: Noten, Tab, Klang
@@ -315,13 +308,12 @@
       playerMode: alphaTab.PlayerMode.EnabledSynthesizer,
       soundFont: BASE + 'vendor/alphatab/soundfont/sonivox.sf2',
       scrollElement: $('score-wrap'),
-      enableUserInteraction: false,
+      enableUserInteraction: true,     // Takt antippen wählt den Griff
     },
   });
   let playerReady = false;
   let score = null;
   let contentBars = 0;         // Takte mit Inhalt; dahinter liegen unsichtbare Takte (Arpeggien, Einzeltöne)
-  let arpStart = -1;           // erster unsichtbarer Arpeggio-Takt (nur Akkord)
   let toneStart = 0;           // erster Takt mit den Einzeltönen
 
   /** alphaTex-Tonname aus MIDI-Nummer (C4 = 60) */
@@ -335,17 +327,13 @@
       `  \\staff {score tabs}`, `  \\tuning (${tun.midi.slice().reverse().map(texNote).join(' ')})`];
     if (tun.bass) lines.push('  \\clef F4');
     const bars = [];
-    const hidden = [];          // unsichtbare Takte hinter dem Inhalt
-    arpStart = -1;
     if (current.kind === 'akkord') {
-      // sichtbar: je Griff ein Takt (2/4) mit dem angeschlagenen Akkord – schmal, damit alles in eine Zeile passt
-      // unsichtbar dahinter: derselbe Griff als Arpeggio (für den Knopf "Arpeggio")
       current.voicings.forEach((v, i) => {
         const notes = v.frets.map((f, s) => (f >= 0 ? `${f}.${strNo(s)}` : null)).filter(Boolean).join(' ');
-        bars.push(`${i === 0 ? '\\ts (2 4) ' : ''}(${notes}).2{bd 100 txt "${lageText(v)}"}`);
-        hidden.push(`(${notes}).2{ad 1500}`);
+        // je Griff ein Takt: erst angeschlagen (bd 100 = schneller Anschlag), dann als Arpeggio (ad 1600 = langsam)
+        bars.push(`(${notes}).2{bd 100 txt "${lageText(v)}"} (${notes}).2{ad 1600}`);
       });
-      $('score-hint').textContent = current.voicings.length ? 'ein Takt je Griff' : '';
+      $('score-hint').textContent = current.voicings.length ? 'Griff oder Takt antippen: angeschlagen, dann als Arpeggio' : '';
     } else {
       const box = current.boxes.find((b) => String(b.index) === state.box) || current.boxes[0];
       const up = box.notes.slice().sort((a, b) => a.midi - b.midi);
@@ -360,12 +348,11 @@
         ? `auf- und abwärts in ${$('box').options[1] ? $('box').options[1].textContent : 'Box 1'}`
         : 'auf- und abwärts im gewählten Muster';
     }
-    if (!bars.length) bars.push(current.kind === 'akkord' ? '\\ts (2 4) r.2' : 'r.1');
+    if (!bars.length) bars.push('r.1');
     contentBars = bars.length;
-    if (hidden.length) { arpStart = bars.length; bars.push(...hidden); }
     toneStart = bars.length;
     // unsichtbare Takte: jede Saite einmal mit allen Bünden 0–15 – für das Antippen auf dem Griffbrett
-    const per = current.kind === 'akkord' ? ':32' : ':16';     // 16 Töne füllen einen 2/4- bzw. 4/4-Takt
+    const per = ':16';                                         // 16 Sechzehntel füllen einen 4/4-Takt
     for (let s = 0; s < n; s++) {
       bars.push(per + ' ' + Array.from({ length: 16 }, (_, f) => `${f}.${strNo(s)}`).join(' '));
     }
@@ -390,50 +377,41 @@
   }
 
   /*
-   * Wiedergabe über Abschnitte (playbackRange): so klingen Anschlag und Arpeggio so, wie sie notiert sind.
-   * Mehrere Griffe nacheinander = eine Warteschlange; wenn ein Abschnitt fertig ist (playerFinished), kommt der nächste.
+   * Wiedergabe über Abschnitte (playbackRange), so klingen Anschlag und Arpeggio wie notiert.
+   * Akkord: einen Griff wählen (Diagramm oder Takt in den Noten antippen) → erst angeschlagen, dann Arpeggio.
+   * Skala: Knopf "Anhören" spielt auf- und abwärts.
    */
-  let queue = [];
-  let seqKind = null;          // 'strum' | 'arp' | 'one' | 'scale' | null
-  function beatRange(bar, beat) {
-    const b = beatAt(bar, beat);
-    if (!b) return null;
-    return { startTick: b.absolutePlaybackStart, endTick: b.absolutePlaybackStart + b.playbackDuration, bar };
-  }
-  const withBar = (r, i) => (r ? { ...r, bar: i } : r);
-  function playRange(r) {
-    api.isLooping = false;
-    api.playbackSpeed = 1;
-    api.playbackRange = { startTick: r.startTick, endTick: r.endTick };
-    api.tickPosition = r.startTick;
-    api.play();
-    if (current.kind === 'akkord') selectVoicing(r.bar);
+  let seqKind = null;          // 'chord' | 'scale' | null
+  function barRange(bar) {
+    const mb = score && score.masterBars[bar];
+    if (!mb) return null;
+    return { startTick: mb.start, endTick: mb.start + mb.calculateDuration() };
   }
   function selectVoicing(i) {
     selected = i;
     document.querySelectorAll('.voicing').forEach((f) => f.classList.toggle('selected', Number(f.dataset.i) === i));
     renderNeckChord(T.tuning(state.tuning));
+    markBar(i);
   }
-  function nextRange() {
-    const r = queue.shift();
-    if (!r) { seqKind = null; updatePlayButtons(); return; }
-    playRange(r);
-  }
-  function playVoicings(which) {
-    if (!playerReady || !score || current.kind !== 'akkord') return;
-    stopAll();
-    queue = current.voicings.map((_, i) => (which === 0 ? beatRange(i, 0) : withBar(beatRange(arpStart + i, 0), i))).filter(Boolean);
-    seqKind = which === 0 ? 'strum' : 'arp';
-    updatePlayButtons();
-    nextRange();
+  /** gewählten Griff auch in den Noten markieren */
+  function markBar(i) {
+    const bar = score && score.tracks[0].staves[0].bars[i];
+    if (!bar) return;
+    const beats = bar.voices[0].beats;
+    try { api.highlightPlaybackRange(beats[0], beats[beats.length - 1]); } catch { /* noch nicht gezeichnet */ }
   }
   function playOne(i) {
-    if (!playerReady || !score) { selectVoicing(i); return; }
+    selectVoicing(i);
+    if (!playerReady || !score) return;
     stopAll();
-    const r = beatRange(i, 0);
+    const r = barRange(i);
     if (!r) return;
-    seqKind = 'one';
-    playRange(r);
+    seqKind = 'chord';
+    api.isLooping = false;
+    api.playbackSpeed = 1;
+    api.playbackRange = r;
+    api.tickPosition = r.startTick;
+    api.play();
   }
   function playTone(s, f) {
     if (!playerReady || !score) return;
@@ -453,9 +431,8 @@
     updatePlayButtons();
     api.play();
   }
-  /** hält alles an: laufende Wiedergabe und Warteschlange */
+  /** hält eine laufende Wiedergabe an */
   function stopAll() {
-    queue = [];
     const was = seqKind;
     seqKind = null;
     if (was || api.playerState === alphaTab.synth.PlayerState.Playing) {
@@ -464,20 +441,19 @@
     updatePlayButtons();
   }
   function updatePlayButtons() {
-    if (state.mode === 'akkord') {
-      $('btn-play').textContent = seqKind === 'strum' ? '■ Stopp' : '▶ Anhören';
-      $('btn-play2').textContent = seqKind === 'arp' ? '■ Stopp' : 'Arpeggio';
-      $('btn-play').title = 'Alle angezeigten Griffe nacheinander anschlagen';
-      $('btn-play2').title = 'Alle angezeigten Griffe nacheinander als Arpeggio';
-    } else {
-      $('btn-play').textContent = seqKind === 'scale' ? '■ Stopp' : '▶ Anhören';
-      $('btn-play').title = 'Tonleiter auf- und abwärts spielen';
-    }
+    $('btn-play').textContent = seqKind === 'scale' ? '■ Stopp' : '▶ Anhören';
   }
   api.playerFinished.on(() => {
-    if (queue.length) setTimeout(() => { if (queue.length) nextRange(); }, 200);
-    else if (seqKind !== 'scale' || !api.isLooping) { seqKind = null; updatePlayButtons(); }
+    if (seqKind !== 'scale' || !api.isLooping) { seqKind = null; updatePlayButtons(); }
   });
+  // Takt in den Noten antippen = diesen Griff wählen und spielen
+  api.beatMouseUp.on((beat) => {
+    if (!beat || current.kind !== 'akkord') return;
+    const i = beat.voice.bar.index;
+    if (i < contentBars) setTimeout(() => playOne(i), 0);
+  });
+  api.renderFinished.on(() => { if (current && current.kind === 'akkord' && current.voicings[selected]) markBar(selected); });
+
   /** Noten und Tab immer in EINER Zeile: ist sie breiter als der Platz, kleiner zeichnen */
   let fitTries = 0;
   api.renderFinished.on(() => {
@@ -528,9 +504,7 @@
     playerReady = true;
     hookPlayer();
     standardLoaded();                 // spätestens jetzt sind die Standardklänge da
-    const hasVoicings = !!(current && current.voicings && current.voicings.length);
-    $('btn-play').disabled = state.mode === 'akkord' && !hasVoicings;
-    $('btn-play2').disabled = !hasVoicings;
+    $('btn-play').disabled = false;
   });
   api.soundFontLoad.on(() => hookPlayer());
   try { hookPlayer(); } catch (e) { console.warn('Player noch nicht bereit', e); }

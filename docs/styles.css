@@ -214,3 +214,19 @@ body[data-mode="skala"] #sec-degrees { order: 5; }
   body { background: #fff; display: block; }
   .card { border: 0; break-inside: avoid; }
 }
+
+/* Kopf kompakt: Name, Beschreibung, Töne und Verwandte in einer Reihe */
+.head { padding: 10px 16px; align-items: center; }
+.head-main { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; min-width: 0; }
+.head h1 { font-size: 30px; }
+.head p { margin: 0; max-width: 200px; line-height: 1.25; }
+.head .tones { flex-wrap: nowrap; }
+.head .tone-chip { min-width: 40px; padding: 2px 8px; }
+.head .tone-chip b { font-size: 16px; }
+.head .relatives { margin-top: 0; }
+.head { flex-wrap: nowrap; }
+.head-main { flex: 1 1 auto; }
+.head-play { flex: 0 0 auto; flex-wrap: nowrap; }
+@media (max-width: 1000px) { .head { flex-wrap: wrap; } }
+.head .relatives { flex-direction: column; gap: 0; align-items: flex-start; }
+.head .relatives button.link { font-size: 12px; padding: 1px 2px; }
