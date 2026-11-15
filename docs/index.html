@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TheKellerkinderAkkorde</title>
+  <link rel="stylesheet" href="styles.css?v=83c8a1de5f">
+  <!-- alphaTab: Noten, Tabulatur und Klang (MPL-2.0, https://alphatab.net) -->
+  <script src="vendor/alphatab/alphaTab.min.js"></script>
+  <!-- Web-Fassung: installierbar (Home-Bildschirm) und offline nutzbar -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1f1d1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Akkorde">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <meta name="kk-build" content="83c8a1de5f">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand" title="TheKellerkinderAkkorde"><span class="brand-name">TheKellerkinder</span><span class="brand-sub">Akkorde</span></div>
+
+  <div class="seg" role="tablist" aria-label="Was suchen?">
+    <button type="button" role="tab" data-mode="akkord" aria-selected="true">Akkord</button>
+    <button type="button" role="tab" data-mode="skala" aria-selected="false">Skala</button>
+  </div>
+
+  <!-- Abfrage: Grundton + Tongeschlecht + Erweiterung (Akkord) bzw. Grundton + Dur/Moll + Art (Skala) -->
+  <div class="query">
+    <select id="root" aria-label="Grundton" title="Grundton"></select>
+    <span class="q-akkord">
+      <select id="quality" aria-label="Tongeschlecht" title="Tongeschlecht"></select>
+      <select id="ext" aria-label="Erweiterung" title="Erweiterung (7, maj7, 9, 13 …)"></select>
+      <select id="bass" aria-label="Basston" title="Basston für Slash-Akkorde (z. B. D/F♯)"></select>
+    </span>
+    <span class="q-skala" hidden>
+      <select id="gender" aria-label="Dur oder Moll" title="Dur oder Moll">
+        <option value="dur">Dur</option><option value="moll">Moll</option>
+      </select>
+      <select id="kind" aria-label="Art der Skala" title="Art"></select>
+    </span>
+    <input id="search" type="search" spellcheck="false" autocomplete="off"
+           placeholder="oder eintippen: A13, fis-moll7, D/Fis" aria-label="Akkord oder Skala eintippen">
+  </div>
+
+  <span class="spacer"></span>
+  <select id="tuning" aria-label="Stimmung" title="Stimmung"></select>
+  <button id="btn-names" type="button" title="Notennamen: deutsch (H, B) oder international (B, B♭)">H/B</button>
+  <button id="btn-quit" type="button" class="quit" title="Programm beenden (Server herunterfahren)">Beenden</button>
+</header>
+
+<main id="main">
+  <!-- Kopf: Name, Töne, Wiedergabe -->
+  <section class="head card">
+    <div class="head-main">
+      <h1 id="title">–</h1>
+      <p id="subtitle" class="muted"></p>
+      <div id="tones" class="tones" aria-label="Töne"></div>
+      <div id="relatives" class="relatives"></div>
+    </div>
+    <div class="head-play">
+      <button id="btn-play" type="button" class="primary" disabled>▶ Anhören</button>
+      <button id="btn-play2" type="button" disabled>Arpeggio</button>
+      <label class="tempo" title="Tempo der Tonleiter">Tempo
+        <select id="tempo"><option>60</option><option>80</option><option selected>100</option><option>120</option><option>140</option></select>
+      </label>
+      <label class="toggle" title="Tonleiter immer wieder spielen"><input id="chk-loop" type="checkbox"> Schleife</label>
+    </div>
+  </section>
+
+  <!-- Akkord: Griffe -->
+  <section id="sec-voicings" class="card">
+    <div class="sec-head">
+      <h2>Griffe</h2>
+      <select id="lage" aria-label="Lage" title="Welche Griffe?">
+        <option value="beste">die besten 6</option>
+        <option value="alle">alle Lagen</option>
+        <option value="0-0">offen</option>
+        <option value="1-4">1.–4. Bund</option>
+        <option value="5-8">5.–8. Bund</option>
+        <option value="9-15">ab 9. Bund</option>
+      </select>
+      <select id="labels" aria-label="Beschriftung" title="Was steht auf den Punkten?">
+        <option value="finger">Finger</option>
+        <option value="iv">Intervalle</option>
+        <option value="note">Töne</option>
+      </select>
+      <span class="muted small">Antippen: Griff anhören und auf dem Griffbrett zeigen</span>
+    </div>
+    <div id="voicings" class="voicings"></div>
+  </section>
+
+  <!-- Skala: Muster und Stufen -->
+  <section id="sec-scale" class="card" hidden>
+    <div class="sec-head">
+      <h2>Griffbrett</h2>
+      <select id="box" aria-label="Muster" title="Ganzes Griffbrett oder ein Fingersatz-Muster"></select>
+      <select id="labels2" aria-label="Beschriftung" title="Was steht auf den Punkten?">
+        <option value="iv">Intervalle</option>
+        <option value="note">Töne</option>
+      </select>
+      <span class="muted small">Töne antippen zum Anhören</span>
+    </div>
+  </section>
+
+  <section class="card neck-card">
+    <div id="neck-head" class="sec-head"><h2 id="neck-title">Auf dem Griffbrett</h2></div>
+    <div id="neck" class="neck-wrap"></div>
+  </section>
+
+  <section id="sec-degrees" class="card" hidden>
+    <div class="sec-head">
+      <h2>Stufenakkorde</h2>
+      <select id="degmode" aria-label="Drei- oder Vierklänge">
+        <option value="triad">Dreiklänge</option>
+        <option value="seventh">Vierklänge</option>
+      </select>
+      <span class="muted small">Antippen öffnet den Akkord</span>
+    </div>
+    <div id="degrees" class="degrees"></div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head"><h2>Noten &amp; Tabulatur</h2><span id="score-hint" class="muted small"></span></div>
+    <div id="score-wrap" class="score-wrap"><div id="score"></div></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <select id="instrument" aria-label="Klang" title="Klang">
+    <option value="acousticguitarsteel">Akustik (Stahl)</option>
+    <option value="acousticguitarnylon">Nylon</option>
+    <option value="electricguitarclean">E-Gitarre clean</option>
+    <option value="electricguitarjazz">E-Gitarre Jazz</option>
+    <option value="overdrivenguitar">Overdrive</option>
+    <option value="distortionguitar">Distortion</option>
+    <option value="electricbassfinger">E-Bass</option>
+  </select>
+  <button id="btn-band" type="button" class="band-toggle" disabled>Band-Klänge</button>
+  <span class="spacer"></span>
+  <span id="app-version" class="app-version">v1.0</span>
+</footer>
+
+<div id="status" class="status" role="status" title="Antippen zum Schließen"></div>
+
+<script src="theorie.js?v=83c8a1de5f"></script>
+<script src="ansicht.js?v=83c8a1de5f"></script>
+<script src="web-adapter.js?v=83c8a1de5f"></script>
+<script src="app.js?v=83c8a1de5f"></script>
+</body>
+</html>

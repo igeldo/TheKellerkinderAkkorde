@@ -1,0 +1,17 @@
+{
+  "name": "TheKellerkinderAkkorde",
+  "short_name": "Akkorde",
+  "description": "Akkorde und Skalen für Gitarre: Griffe in allen Lagen, Pentatonik-Boxen, Stufenakkorde – mit Klang.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1f1d1a",
+  "theme_color": "#1f1d1a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
